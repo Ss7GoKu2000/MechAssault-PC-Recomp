@@ -57,7 +57,9 @@ def main():
     subprocess.run(
         [str(csc), "/nologo", "/target:winexe", "/platform:x64", "/optimize+",
          "/reference:System.Windows.Forms.dll", "/reference:System.Drawing.dll",
-         "/reference:System.Web.Extensions.dll", f"/out:{launcher}", str(ROOT / "launcher/Launcher.cs")],
+         "/reference:System.Web.Extensions.dll", "/reference:System.IO.Compression.dll",
+         "/reference:System.IO.Compression.FileSystem.dll", f"/out:{launcher}",
+         str(ROOT / "launcher/Launcher.cs"), str(ROOT / "launcher/Installer.cs")],
         check=True,
     )
     windows.append((launcher, "MechAssault.exe"))
