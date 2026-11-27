@@ -27,6 +27,8 @@ This is the hash of the executable **inside** the image. Renaming the ISO does n
 
 ### Display and diagnostics
 
+- To close the game, select **Exit** below **Options** on the main menu.
+
 - Native-aspect gameplay is enabled initially. **F6** toggles back to the original 4:3 gameplay view. Menus and prerecorded movies retain their original proportions.
 - **F1** opens the diagnostic overlay and starts the local audio trace. **F2** captures a frame while the overlay is open. Logs and captures are written beside the executable. Share them only after reviewing their contents.
 - The campaign was play-tested locally, including the briefing audio and road flicker fixes. Full campaign coverage, split-screen, and other revisions are outside this test build's verification.
