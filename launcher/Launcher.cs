@@ -26,6 +26,12 @@ internal sealed class Launcher : Form
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        if (args.Length == 4 && args[0] == "--apply-update")
+        {
+            try { Installer.Apply(args); }
+            catch (Exception error) { MessageBox.Show(error.Message, "MechAssault update", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            return;
+        }
         Application.Run(new Launcher(args.FirstOrDefault()));
     }
 
@@ -134,13 +140,29 @@ internal sealed class Launcher : Form
         {
             string releases = await Task.Run((Func<string>)ReadReleases);
             var list = new JavaScriptSerializer().Deserialize<Release[]>(releases);
-            var latest = list.Where(release => !release.draft).Select(release => ParseVersion(release.tag_name))
-                .Where(item => item != null).OrderByDescending(item => item).FirstOrDefault();
+            var latest = list.Where(release => !release.draft)
+                .Select(release => new {
+                    Version = ParseVersion(release.tag_name),
+                    Asset = (release.assets ?? new ReleaseAsset[0]).FirstOrDefault(asset => asset.name == Installer.AssetName)
+                })
+                .Where(item => item.Version != null && item.Asset != null)
+                .OrderByDescending(item => item.Version).FirstOrDefault();
             Version installed = ParseVersion(version);
-            if (latest == null) status.Text = "No versioned releases are available.";
-            else if (installed == null) status.Text = "Latest release: v" + latest + ". Open GitHub releases for details.";
-            else if (latest > installed) status.Text = "Update available: v" + latest + ". Open GitHub releases to download.";
-            else status.Text = "You're on the latest available build.";
+            if (latest == null) status.Text = "No Windows release ZIP is available.";
+            else if (installed == null) status.Text = "Installed version unknown. Open GitHub releases.";
+            else if (latest.Version <= installed) status.Text = "You're on the latest available build.";
+            else if (MessageBox.Show(this, "Download and install v" + latest.Version +
+                     "? The launcher will restart after the update.",
+                     Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                Enabled = false;
+                status.Text = "Downloading and verifying v" + latest.Version + "...";
+                string work = await Task.Run(() => Installer.Stage(install, latest.Asset.browser_download_url,
+                    latest.Asset.digest, latest.Asset.size, latest.Version));
+                Installer.Start(install, work);
+                Close();
+            }
+            else status.Text = "Update available: v" + latest.Version;
         }
         catch (WebException error)
         {
@@ -149,11 +171,11 @@ internal sealed class Launcher : Form
                 ? "Private repo. Sign in with GitHub CLI or open GitHub releases."
                 : "Couldn't reach GitHub. Try again or open GitHub releases.";
         }
-        catch (Exception)
+        catch (Exception error)
         {
-            status.Text = "Couldn't check updates. Open GitHub releases to check manually.";
+            status.Text = error.Message;
         }
-        finally { check.Enabled = true; }
+        finally { if (!IsDisposed) { Enabled = true; check.Enabled = true; } }
     }
 
     private static Version ParseVersion(string tag)
@@ -166,6 +188,15 @@ internal sealed class Launcher : Form
     {
         public string tag_name { get; set; }
         public bool draft { get; set; }
+        public ReleaseAsset[] assets { get; set; }
+    }
+
+    private sealed class ReleaseAsset
+    {
+        public string name { get; set; }
+        public string browser_download_url { get; set; }
+        public string digest { get; set; }
+        public long size { get; set; }
     }
 
     private static string ReadReleases()
