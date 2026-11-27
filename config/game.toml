@@ -300,3 +300,18 @@ call = "MechAssaultNativeCullVertical"
 [[hook]]
 at = 0x3A5C0
 call = "MechAssaultNativeCullDone"
+
+# Reuse the original dashboard row as a native PC Exit command.
+[[hook]]
+at = 0x87A1E
+call = "MechAssaultKeepExitVisible"
+on_true = 0x87A21
+
+[[hook]]
+at = 0x87A29
+call = "MechAssaultSetExitLabel"
+
+[[hook]]
+at = 0x87A40
+call = "MechAssaultExitFromMainMenu"
+on_true = "ret"
