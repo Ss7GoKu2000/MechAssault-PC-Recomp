@@ -5,11 +5,15 @@ Unofficial Windows x64 build of the original Xbox MechAssault using [XboxXBEReco
 ## Play the private test build
 
 1. Extract the entire Windows ZIP into a writable folder, such as `Documents\MechAssault-PC`.
-2. Run **Launch-MechAssault.cmd**. Select either your **Xbox disc image** (including `.xiso.iso`) or the **extracted game folder** that directly contains `default.xbe` and the original data.
+2. Run **MechAssault.exe** to open the launcher. Select either your **Xbox disc image** (including `.xiso.iso`) or the **extracted game folder** that directly contains `default.xbe` and the original data.
 3. Click **Play**. The game checks the selected executable and builds `MechAssault.dll` on the first launch. Wait for the compiler window to finish, then click its **Start** button.
 4. Use the same launcher next time. It remembers your selection locally. Disc images are read directly from the selected location. Leave that file available while playing. You can also drag an ISO or folder onto the launcher.
 
 You need Windows 10 or 11 x64 and a Direct3D 12 GPU. Visual Studio is required only for building the project from source. Keep the package's compiler folder if you expect to update or rebuild the game later.
+
+### Updates
+
+Open **Check for updates** in the launcher to compare this build against published numeric GitHub release tags such as `v0.1.0`. Use **GitHub releases** to download an update. The launcher leaves installation and save files alone. Private testers can sign into GitHub CLI with `gh auth login` using a GitHub account that has access to the repository, or check releases in their signed-in browser.
 
 ### Supported disc revision
 
@@ -26,7 +30,7 @@ This is the hash of the executable **inside** the image. Renaming the ISO does n
 - Native-aspect gameplay is enabled initially. **F6** toggles back to the original 4:3 gameplay view. Menus and prerecorded movies retain their original proportions.
 - **F1** opens the diagnostic overlay and starts the local audio trace. **F2** captures a frame while the overlay is open. Logs and captures are written beside the executable. Share them only after reviewing their contents.
 - The campaign was play-tested locally, including the briefing audio and road flicker fixes. Full campaign coverage, split-screen, and other revisions are outside this test build's verification.
-- For startup issues, check `logs/game.log` and `logs/compile.log`. Keep `hdd` when moving the installation if you want to retain local saves.
+- For startup issues, check `game/logs/game.log` and `game/logs/compile.log`. Keep `game/hdd` when moving the installation if you want to retain local saves. From the previous flat ZIP layout, copy `hdd` and `settings.toml` into the new installation's `game` folder.
 
 ## Build from the source ZIP
 
