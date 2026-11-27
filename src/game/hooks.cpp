@@ -88,3 +88,51 @@ __declspec(dllexport) void MechAssaultNativeCullDone(X86Context& ctx, uint8_t* b
     MechAssaultNativeCullVertical(ctx, base);
     cull = {};
 }
+#include "kernel/memory.h"
+
+namespace {
+
+constexpr uint32_t kMenuButton = 0x00313288;
+constexpr uint32_t kDashboardButtonName = 0x4A000245;
+constexpr uint32_t kDashboardButtonId = 5;
+
+bool IsMainMenuExitButton(uint32_t button) {
+    return button && kernel::R32(button) == kMenuButton &&
+           kernel::R32(button + 0x30) == kDashboardButtonName &&
+           kernel::R32(button + 0x68) == kDashboardButtonId;
+}
+
+}  // namespace
+
+// The Xbox hides its dashboard row on this path. The PC uses that row for Exit.
+__declspec(dllexport) bool MechAssaultKeepExitVisible(X86Context& ctx, uint8_t*) {
+    return IsMainMenuExitButton(ctx.esi);
+}
+
+// Use the button's native wide-text setter, which copies the label and lays it out.
+__declspec(dllexport) void MechAssaultSetExitLabel(X86Context& ctx, uint8_t*) {
+    const uint32_t menu = ctx.edi;
+    const uint32_t root = kernel::R32(menu + 0x50);
+    if (!root) return;
+    uint32_t node = kernel::R32(root + 0x30);
+    for (; node; node = kernel::R32(node + 0x40)) {
+        if (!IsMainMenuExitButton(node)) continue;
+        constexpr uint16_t label[] = {'E', 'X', 'I', 'T', 0};
+        const uint32_t text = mem::AllocSystem(sizeof(label));
+        if (!text) return;
+        for (unsigned i = 0; i < sizeof(label) / sizeof(label[0]); ++i)
+            kernel::W16(text + i * sizeof(label[0]), label[i]);
+        X86Context call = ctx;
+        call.ecx = node;
+        kernel::CallGuest(call, 0x0008F520, {text});
+        mem::FreeSystem(text);
+        return;
+    }
+}
+
+__declspec(dllexport) bool MechAssaultExitFromMainMenu(X86Context& ctx, uint8_t*) {
+    if (!IsMainMenuExitButton(kernel::R32(ctx.esp + 4))) return false;
+    PostMessageW(static_cast<HWND>(app::Window()), WM_CLOSE, 0, 0);
+    ctx.eax = 0;
+    return true;
+}
