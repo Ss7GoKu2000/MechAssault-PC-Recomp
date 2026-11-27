@@ -13,7 +13,7 @@ You need Windows 10 or 11 x64 and a Direct3D 12 GPU. Visual Studio is required o
 
 ### Updates
 
-Open **Check for updates** in the launcher to compare this build against published numeric GitHub release tags such as `v0.1.0`. Use **GitHub releases** to download an update. The launcher leaves installation and save files alone. Private testers can sign into GitHub CLI with `gh auth login` using a GitHub account that has access to the repository, or check releases in their signed-in browser.
+Open **Check for updates** in the launcher. If a newer published release has a Windows ZIP, accept the prompt to download, verify, and install it. The launcher restarts after installation. Saves, settings, and your selected game path are kept. The updated launcher requires public release assets for automatic downloads. **GitHub releases** opens the manual download page.
 
 ### Supported disc revision
 
