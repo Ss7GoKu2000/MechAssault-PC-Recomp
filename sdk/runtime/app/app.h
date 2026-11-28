@@ -22,6 +22,7 @@ struct Settings {
     uint32_t render_percent = 100;   // of the output height
     uint32_t fps_cap = 60;           // 0 unlimited, kFpsCapRefresh the monitor's refresh rate
     bool vsync = true;
+    uint32_t brightness_percent = 100;
     uint32_t aniso = 0;              // 0 as the game asks
     bool custom_textures = true;     // images in textures\replacement\ beside the exe replace the game's
     bool dump_textures = false;      // each texture once into textures\dumps\ beside the exe
@@ -31,6 +32,13 @@ struct Settings {
 };
 
 Settings& Get();
+struct GraphicsSettings {
+    DisplayMode mode;
+    uint32_t width, height, scale, cap, brightness;
+    bool vsync;
+};
+GraphicsSettings ReadGraphics();
+void SetGraphics(const GraphicsSettings& graphics);
 void Load();
 void Save();
 void LogSettings();  // every setting, as the settings file has them

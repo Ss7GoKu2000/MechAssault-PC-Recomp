@@ -315,3 +315,31 @@ call = "MechAssaultSetExitLabel"
 at = 0x87A40
 call = "MechAssaultExitFromMainMenu"
 on_true = "ret"
+
+# Front-end Options repurposes the row for the Xbox Demos disc.
+[[hook]]
+at = 0xA9413
+call = "MechAssaultSetOptionsGraphics"
+
+[[hook]]
+at = 0xA9440
+call = "MechAssaultOptionsGraphicsSelected"
+on_true = "ret"
+
+# Observe the separate pause layouts before adding their Graphics row.
+[[hook]]
+at = 0xA7651
+call = "MechAssaultTracePauseRows"
+
+[[hook]]
+at = 0xA7670
+call = "MechAssaultPauseMenuFrame"
+
+[[hook]]
+at = 0xA74D7
+call = "MechAssaultAddPauseGraphics"
+
+[[hook]]
+at = 0x851E9
+call = "MechAssaultPauseGraphicsSelected"
+on_true = 0x851FA

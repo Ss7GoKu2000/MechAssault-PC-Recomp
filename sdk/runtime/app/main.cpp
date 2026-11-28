@@ -80,7 +80,7 @@ void DumpThreads() {
 
 // window thread only
 void ApplyNow() {
-    const Settings& s = Get();
+    const auto s = ReadGraphics();
     HMONITOR mon = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFOEXW mi{};
     mi.cbSize = sizeof(mi);
@@ -95,7 +95,7 @@ void ApplyNow() {
     desktop.dmSize = sizeof(desktop);
     EnumDisplaySettingsW(mi.szDevice, ENUM_REGISTRY_SETTINGS, &desktop);
     // the desktop's own size is no mode change: switching to it anyway blanks the screen for nothing
-    if (s.display_mode == DisplayMode::Fullscreen && s.width && s.height &&
+    if (s.mode == DisplayMode::Fullscreen && s.width && s.height &&
         (s.width != desktop.dmPelsWidth || s.height != desktop.dmPelsHeight)) {
         DEVMODEW dm{};
         dm.dmSize = sizeof(dm);
@@ -105,7 +105,7 @@ void ApplyNow() {
         g_mode_changed = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_FULLSCREEN, nullptr) == DISP_CHANGE_SUCCESSFUL;
         GetMonitorInfoW(mon, &mi);
     }
-    if (s.display_mode == DisplayMode::Windowed) {
+    if (s.mode == DisplayMode::Windowed) {
         RECT r{0, 0, LONG(out.width), LONG(out.height)};
         AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
         int w = r.right - r.left, h = r.bottom - r.top;
@@ -154,7 +154,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case WM_KEYDOWN:
             if (wp == VK_F3) DumpThreads();
             return 0;
-        case WM_ACTIVATE:
+        case WM_ACTIVATE: {
+            const auto graphics = ReadGraphics();
             if (LOWORD(wp) == WA_INACTIVE) {
                 // a changed display mode steps aside for the desktop, minimized, and comes back on return; not while
                 // handing over to the next instance, which runs in the same mode
@@ -166,7 +167,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                     g_mode_changed = false;
                     ShowWindow(hwnd, SW_MINIMIZE);
                 }
-            } else if (Get().display_mode == DisplayMode::Fullscreen && Get().width && Get().height && !g_mode_changed &&
+            } else if (graphics.mode == DisplayMode::Fullscreen && graphics.width && graphics.height && !g_mode_changed &&
                        IsWindowVisible(hwnd) && !g_apply_posted) {
                 // once: restoring the window activates it again from inside the apply, and a second apply switched
                 // the mode back and forth, after which presents were not taken for a while (the game stood still
@@ -175,6 +176,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 PostMessageW(hwnd, kApplyDisplay, 0, 0);
             }
             break;
+        }
         case kApplyDisplay:
             if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
             ApplyNow();
@@ -248,7 +250,7 @@ uint32_t RefreshRate() {
 void Pace() {
     using clock = std::chrono::steady_clock;
     static clock::time_point next = clock::now();
-    uint32_t cap = Get().fps_cap;
+    uint32_t cap = ReadGraphics().cap;
     if (cap == kFpsCapRefresh) cap = RefreshRate();
     auto now = clock::now();
     if (!cap) {

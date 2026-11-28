@@ -23,6 +23,7 @@ namespace app {
 namespace {
 
 const char* kModes[] = {"fullscreen", "borderless", "windowed"};
+std::mutex graphics_lock;
 
 std::filesystem::path File() { return ExeDir() / kGame.settings; }
 
@@ -31,6 +32,24 @@ std::filesystem::path File() { return ExeDir() / kGame.settings; }
 Settings& Get() {
     static Settings s;
     return s;
+}
+
+GraphicsSettings ReadGraphics() {
+    std::lock_guard lock(graphics_lock);
+    const auto& s = Get();
+    return {s.display_mode, s.width, s.height, s.render_percent, s.fps_cap, s.brightness_percent, s.vsync};
+}
+
+void SetGraphics(const GraphicsSettings& graphics) {
+    std::lock_guard lock(graphics_lock);
+    auto& s = Get();
+    s.display_mode = graphics.mode;
+    s.width = graphics.width;
+    s.height = graphics.height;
+    s.render_percent = graphics.scale;
+    s.fps_cap = graphics.cap;
+    s.brightness_percent = graphics.brightness;
+    s.vsync = graphics.vsync;
 }
 
 void Load() {
@@ -49,6 +68,7 @@ void Load() {
     s.render_percent = t["render_percent"].value_or(s.render_percent);
     s.fps_cap = t["fps_cap"].value_or(s.fps_cap);
     s.vsync = t["vsync"].value_or(s.vsync);
+    s.brightness_percent = std::clamp(t["brightness_percent"].value_or(s.brightness_percent), 50u, 150u);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     s.custom_textures = t["custom_textures"].value_or(s.custom_textures);
     s.dump_textures = t["dump_textures"].value_or(s.dump_textures);
@@ -67,12 +87,14 @@ namespace {
 
 toml::table Table() {
     const Settings& s = Get();
-    toml::table t{{"display_mode", kModes[uint32_t(s.display_mode)]},
-                  {"width", int64_t(s.width)},
-                  {"height", int64_t(s.height)},
-                  {"render_percent", int64_t(s.render_percent)},
-                  {"fps_cap", int64_t(s.fps_cap)},
-                  {"vsync", s.vsync},
+    const auto graphics = ReadGraphics();
+    toml::table t{{"display_mode", kModes[uint32_t(graphics.mode)]},
+                  {"width", int64_t(graphics.width)},
+                  {"height", int64_t(graphics.height)},
+                  {"render_percent", int64_t(graphics.scale)},
+                  {"fps_cap", int64_t(graphics.cap)},
+                  {"vsync", graphics.vsync},
+                  {"brightness_percent", int64_t(graphics.brightness)},
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"custom_textures", s.custom_textures},
                   {"dump_textures", s.dump_textures},
@@ -120,8 +142,8 @@ Mode Desktop() {
 }
 
 Mode Output() {
-    const Settings& s = Get();
-    if (s.width && s.height) return {s.width, s.height};
+    const auto s = ReadGraphics();
+    if (s.mode != DisplayMode::Borderless && s.width && s.height) return {s.width, s.height};
     return Desktop();
 }
 
@@ -129,6 +151,7 @@ Mode Output() {
 // setting or the window's monitor changes
 Mode CachedOutput() {
     struct Key {
+        DisplayMode display_mode;
         uint32_t width;
         uint32_t height;
         HMONITOR monitor;
@@ -137,8 +160,8 @@ Mode CachedOutput() {
     static std::mutex lock;
     static Key key{};
     static Mode mode{};
-    const Settings& s = Get();
-    Key now{s.width, s.height, MonitorFromWindow(static_cast<HWND>(Window()), MONITOR_DEFAULTTOPRIMARY)};
+    const auto s = ReadGraphics();
+    Key now{s.mode, s.width, s.height, MonitorFromWindow(static_cast<HWND>(Window()), MONITOR_DEFAULTTOPRIMARY)};
     std::lock_guard<std::mutex> guard(lock);
     if (!(now == key) || !mode.height) {
         key = now;
@@ -154,7 +177,7 @@ bool Widescreen() {
 }
 
 float RenderScale(uint32_t guest_height) {
-    float h = CachedOutput().height * (Get().render_percent / 100.0f);
+    float h = CachedOutput().height * (ReadGraphics().scale / 100.0f);
     return guest_height ? std::max(h / guest_height, 0.1f) : 1.0f;
 }
 

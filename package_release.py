@@ -43,8 +43,9 @@ def write_zip(destination, entries):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--crt", type=Path, required=True, help="Visual Studio x64 Microsoft.VC143.CRT directory")
+    parser.add_argument("--output", type=Path, default=ROOT / "out" / "private-test", help="Directory for release ZIPs")
     args = parser.parse_args()
-    output = ROOT / "out" / "private-test"
+    output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
 
     source = [(ROOT / name, name) for name in PROJECT_FILES]

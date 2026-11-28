@@ -4,6 +4,8 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
@@ -39,7 +41,7 @@ internal sealed class Launcher : Form
     {
         version = ReadLocal("version.txt").Trim();
         Text = "MechAssault";
-        ClientSize = new Size(620, 318);
+        ClientSize = new Size(620, 363);
         AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -66,9 +68,60 @@ internal sealed class Launcher : Form
 
         check = AddButton("Check for updates", 29, 232, 166, CheckUpdates);
         AddButton("GitHub releases", 204, 232, 156, delegate { OpenReleases(); });
-        status.SetBounds(29, 276, 562, 37);
+        AddButton("Create Desktop Shortcut", 29, 277, 198, delegate { RunLauncherAction(CreateDesktopShortcut); });
+        AddButton("Open Save Folder", 236, 277, 173, delegate { RunLauncherAction(() => OpenRuntimeFolder("hdd")); });
+        AddButton("Open Logs Folder", 418, 277, 173, delegate { RunLauncherAction(() => OpenRuntimeFolder("logs")); });
+        status.SetBounds(29, 321, 562, 37);
         status.ForeColor = Color.Gainsboro;
         Controls.Add(status);
+    }
+
+    private void RunLauncherAction(Action action)
+    {
+        try { action(); }
+        catch (Exception error)
+        {
+            MessageBox.Show(this, error.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void OpenRuntimeFolder(string name)
+    {
+        string folder = Path.Combine(install, "game", name);
+        Directory.CreateDirectory(folder);
+        Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+    }
+
+    private void CreateDesktopShortcut()
+    {
+        string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        if (!Directory.Exists(desktop))
+            throw new DirectoryNotFoundException("Windows could not find your Desktop folder.");
+
+        string shortcutPath = Path.Combine(desktop, "MechAssault.lnk");
+        if (File.Exists(shortcutPath) &&
+            MessageBox.Show(this, "Replace the existing MechAssault desktop shortcut?", Text,
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            return;
+
+        var shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell", true));
+        try
+        {
+            object shortcut = shell.GetType().InvokeMember("CreateShortcut", BindingFlags.InvokeMethod,
+                                                           null, shell, new object[] { shortcutPath });
+            try
+            {
+                Type shortcutType = shortcut.GetType();
+                shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut,
+                                          new object[] { Application.ExecutablePath });
+                shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut,
+                                          new object[] { install });
+                shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
+            }
+            finally { Marshal.FinalReleaseComObject(shortcut); }
+        }
+        finally { Marshal.FinalReleaseComObject(shell); }
+        status.Text = "Desktop shortcut created.";
     }
 
     private string ReadLocal(string name)

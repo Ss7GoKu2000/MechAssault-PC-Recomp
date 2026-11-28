@@ -134,8 +134,8 @@ float4 psmain(O i) : SV_Target {
     for (int y = 0; y < n; y++)
         for (int x = 0; x < n; x++) c += img.SampleLevel(ls, i.uv + px * ((float2(x, y) + 0.5) / n - 0.5), 0);
     c /= n * n;
-    c.rgb *= opts.w;
     if (opts.x > 0) c.rgb = float3(lut.Sample(ps, float2(c.r, 0.5)).r, lut.Sample(ps, float2(c.g, 0.5)).g, lut.Sample(ps, float2(c.b, 0.5)).b);
+    c.rgb *= opts.w;
     return float4(c.rgb, opts.y > 0 ? c.a : 1);
 }
 )";
@@ -3349,7 +3349,7 @@ void D3D12Backend::BlitFrame(Target& t) {
     cl_->RSSetScissorRects(1, &scissor);
     binds_ = {};
     Transition(t.res.Get(), t.state, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-    Blit(t.res.Get(), t.fmt, uv, {.gamma = gamma_});
+    Blit(t.res.Get(), t.fmt, uv, {.gamma = gamma_, .mul = app::ReadGraphics().brightness / 100.0f});
 }
 
 void D3D12Backend::RenderUi() {
@@ -3525,7 +3525,7 @@ void D3D12Backend::Present(const Surface& front) {
     Submit(false);
     present_fence_[presents_ % (kFrames + 1)].store(fence_value_);
     DeliverReports();
-    bool vsync = app::Get().vsync;
+    bool vsync = app::ReadGraphics().vsync;
     auto perf_swap = PerfClock::now();
     swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
     g_perf.swap += PerfMs(perf_swap);
